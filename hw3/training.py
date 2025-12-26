@@ -94,7 +94,28 @@ class Trainer(abc.ABC):
             #  - Implement early stopping. This is a very useful and
             #    simple regularization technique that is highly recommended.
             # ====== YOUR CODE: ======
-            pass
+            actual_num_epochs += 1
+            #train epoch
+            train_result = self.train_epoch(dl_train, verbose=verbose, **kw)
+            train_loss += train_result.losses 
+            train_acc.append(train_result.accuracy)
+
+            #test epoch
+            test_result = self.test_epoch(dl_test, verbose=verbose, **kw)            
+            test_loss += test_result.losses 
+            test_acc.append(test_result.accuracy)
+            
+            if best_acc is None or test_result.accuracy > best_acc:
+                # ====== YOUR CODE: ======
+                save_checkpoint = True
+                best_acc =  test_result.accuracy
+                epochs_without_improvement = 0
+            else:
+                # ====== YOUR CODE: ======
+                epochs_without_improvement += 1
+                if early_stopping is not None and epochs_without_improvement >= early_stopping:
+                    break 
+            #pass
             # ========================
 
             # Save model checkpoint if requested
@@ -114,6 +135,9 @@ class Trainer(abc.ABC):
 
         return FitResult(actual_num_epochs, train_loss, train_acc, test_loss, test_acc)
 
+
+
+    
     def train_epoch(self, dl_train: DataLoader, **kw) -> EpochResult:
         """
         Train once over a training set (single epoch).
@@ -222,14 +246,16 @@ class RNNTrainer(Trainer):
     def train_epoch(self, dl_train: DataLoader, **kw):
         # TODO: Implement modifications to the base method, if needed.
         # ====== YOUR CODE: ======
-        pass
+        self.h = None
+        #pass
         # ========================
         return super().train_epoch(dl_train, **kw)
 
     def test_epoch(self, dl_test: DataLoader, **kw):
         # TODO: Implement modifications to the base method, if needed.
         # ====== YOUR CODE: ======
-        pass
+        #pass
+        self.h = None
         # ========================
         return super().test_epoch(dl_test, **kw)
 
@@ -247,8 +273,21 @@ class RNNTrainer(Trainer):
         #  - Update params
         #  - Calculate number of correct char predictions
         # ====== YOUR CODE: ======
-        pass
-        # ========================
+        #pass
+        # Forward pass
+        y_pred, self.h = self.model.forward(x, self.h)
+        self.h = self.h.detach()
+        # Compute loss
+        loss = self.loss_fn(y_pred.view(-1, y_pred.shape[-1]), y.view(-1))
+        
+        # Backward pass
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+        
+        # Compute correct predictions
+        pred_idx = y_pred.argmax(dim=-1)
+        num_correct = (pred_idx == y).sum()
 
         # Note: scaling num_correct by seq_len because each sample has seq_len
         # different predictions.
@@ -267,7 +306,15 @@ class RNNTrainer(Trainer):
             #  - Loss calculation
             #  - Calculate number of correct predictions
             # ====== YOUR CODE: ======
-            pass
+            # Forward pass
+            y_pred, _ = self.model.forward(x)
+            
+            # Compute loss
+            loss = self.loss_fn(y_pred.view(-1, y_pred.shape[-1]), y.view(-1))
+            
+            # Compute correct predictions
+            pred_idx = y_pred.argmax(dim=-1)
+            num_correct = (pred_idx == y).sum()
             # ========================
 
         return BatchResult(loss.item(), num_correct.item() / seq_len)
@@ -287,7 +334,7 @@ class VAETrainer(Trainer):
     def test_batch(self, batch) -> BatchResult:
         x, _ = batch
         x = x.to(self.device)  # Image batch (N,C,H,W)
-
+        #SHIR
         with torch.no_grad():
             # TODO: Evaluate a VAE on one batch.
             # ====== YOUR CODE: ======
