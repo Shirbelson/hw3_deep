@@ -19,7 +19,32 @@ class EncoderCNN(nn.Module):
         #  use pooling or only strides, use any activation functions,
         #  use BN or Dropout, etc.
         # ====== YOUR CODE: ======
-        pass
+        ndf = 128 #the initial output channels for the first convolutional layer. 
+
+        # --- Layer 1 ---
+        # Input: (N, in_channels, H, W) -> Output: (N, 128, H/2, W/2)
+        modules.append(nn.Conv2d(in_channels, ndf, kernel_size=4, stride=2, padding=1, bias=False))
+        modules.append(nn.LeakyReLU(0.2, inplace=True))
+
+        # --- Layer 2 ---
+        # Input: (N, 128, H/2, W/2) -> Output: (N, 256, H/4, W/4)
+        modules.append(nn.Conv2d(ndf, ndf * 2, kernel_size=4, stride=2, padding=1, bias=False))
+        modules.append(nn.BatchNorm2d(ndf * 2))
+        modules.append(nn.LeakyReLU(0.2, inplace=True))
+
+        # --- Layer 3 ---
+        # Input: (N, 256, H/4, W/4) -> Output: (N, 512, H/8, W/8)
+        modules.append(nn.Conv2d(ndf * 2, ndf * 4, kernel_size=4, stride=2, padding=1, bias=False))
+        modules.append(nn.BatchNorm2d(ndf * 4))
+        modules.append(nn.LeakyReLU(0.2, inplace=True))
+
+        # --- Layer 4 (Output Mapping) ---
+        # Input: (N, 512, H/8, W/8) -> Output: (N, out_channels, H/16, W/16)
+        modules.append(nn.Conv2d(ndf * 4, out_channels, kernel_size=4, stride=2, padding=1, bias=False))
+        modules.append(nn.BatchNorm2d(out_channels))
+        modules.append(nn.LeakyReLU(0.2, inplace=True))
+        
+        #pass
         # ========================
         self.cnn = nn.Sequential(*modules)
 
@@ -42,7 +67,31 @@ class DecoderCNN(nn.Module):
         #  output should be a batch of images, with same dimensions as the
         #  inputs to the Encoder were.
         # ====== YOUR CODE: ======
-        pass
+        ngf = 128 #same as in the encoder
+
+        # --- Layer 1 ---
+        # Input: (N, in_channels, 4, 4) -> Output: (N, 512, 8, 8)
+        modules.append(nn.ConvTranspose2d(in_channels, ngf * 4, kernel_size=4, stride=2, padding=1, bias=False))
+        modules.append(nn.BatchNorm2d(ngf * 4))
+        modules.append(nn.ReLU(True)) 
+
+        # --- Layer 2 ---
+        # Input: (N, 512, 8, 8) -> Output: (N, 256, 16, 16)
+        modules.append(nn.ConvTranspose2d(ngf * 4, ngf * 2, kernel_size=4, stride=2, padding=1, bias=False))
+        modules.append(nn.BatchNorm2d(ngf * 2))
+        modules.append(nn.ReLU(True))
+
+        # --- Layer 3 ---
+        # Input: (N, 256, 16, 16) -> Output: (N, 128, 32, 32)
+        modules.append(nn.ConvTranspose2d(ngf * 2, ngf, kernel_size=4, stride=2, padding=1, bias=False))
+        modules.append(nn.BatchNorm2d(ngf))
+        modules.append(nn.ReLU(True))
+
+        # --- Layer 4 (Output) ---
+        # Input: (N, 128, 32, 32) -> Output: (N, out_channels, 64, 64)
+        modules.append(nn.ConvTranspose2d(ngf, out_channels, kernel_size=4, stride=2, padding=1, bias=False))
+        
+        #pass
         # ========================
         self.cnn = nn.Sequential(*modules)
 
@@ -68,7 +117,11 @@ class VAE(nn.Module):
 
         # TODO: Add more layers as needed for encode() and decode().
         # ====== YOUR CODE: ======
-        pass
+        self.fc_mu = nn.Linear(n_features, z_dim)
+        self.fc_log_sigma2 = nn.Linear(n_features, z_dim)
+
+        self.fc_z_project = nn.Linear(z_dim, n_features)
+        #pass
         # ========================
 
     def _check_features(self, in_size):
@@ -89,7 +142,30 @@ class VAE(nn.Module):
         #     log_sigma2 (mean and log variance) of q(Z|x).
         #  2. Apply the reparametrization trick to obtain z.
         # ====== YOUR CODE: ======
-        pass
+        h = self.features_encoder(x)
+        
+        # 1. Flatten the output for the linear layers
+        # (N, C, H, W) -> (N, C*H*W)
+        h = h.view(h.size(0), -1)
+        
+        # 2. Calculate mu and log_sigma2 using the linear layers
+        mu = self.fc_mu(h)       
+        log_sigma2 = self.fc_log_sigma2(h) 
+        
+        # 3. Reparametrization Trick
+        # We need standard deviation (std) for the formula: z = mu + std * epsilon
+        # We have log(sigma^2). Remember: sigma = sqrt(sigma^2) = (sigma^2)^0.5
+        # So: std = exp(log_sigma2 * 0.5)
+        std = torch.exp(0.5 * log_sigma2)
+        
+        # 4. Sample epsilon from standard normal distribution
+        # It must have the same shape and device as std
+        eps = torch.randn_like(std)
+        
+        # 5. Calculate z
+        z = mu + std * eps
+        
+        #pass
         # ========================
         return z, mu, log_sigma2
 
@@ -99,7 +175,9 @@ class VAE(nn.Module):
         #  1. Convert latent z to features h with a linear layer.
         #  2. Apply features decoder.
         # ====== YOUR CODE: ======
-        pass
+        h = self.fc_z_project(z)
+        h_cube = h.view(-1, *self.features_shape)
+        x_rec = self.features_decoder(h_cube)
         # ========================
         # Scale to [-1, 1] (same dynamic range as original images).
         return torch.tanh(x_rec)
@@ -117,7 +195,12 @@ class VAE(nn.Module):
             #    Instead of sampling from N(psi(z), sigma2 I), we'll just take
             #    the mean, i.e. psi(z).
             # ====== YOUR CODE: ======
-            pass
+            z = torch.randn(n, self.z_dim, device=device)
+            x_generated = self.decode(z)
+            
+            for i in range(n):
+                samples.append(x_generated[i])
+            #pass
             # ========================
         # Detach and move to CPU for display purposes.
         samples = [s.detach().cpu() for s in samples]
@@ -149,7 +232,20 @@ def vae_loss(x, xr, z_mu, z_log_sigma2, x_sigma2):
     #  1. The covariance matrix of the posterior is diagonal.
     #  2. You need to average over the batch dimension.
     # ====== YOUR CODE: ======
-    pass
+    # --- 1. Data Loss (Reconstruction Loss) ---
+    d_x = x[0].numel() 
+
+    mse_per_sample = torch.sum((x - xr).pow(2).view(x.size(0), -1), dim=1)
+    
+    data_loss = torch.mean(mse_per_sample) / (x_sigma2 * d_x)
+
+    # --- 2. KL Divergence Loss ---
+    kld_per_sample = torch.sum(torch.exp(z_log_sigma2) + z_mu.pow(2) - 1 - z_log_sigma2, dim=1)
+    kldiv_loss = torch.mean(kld_per_sample)
+
+    # --- 3. Total Loss ---
+    loss = data_loss + kldiv_loss
+    #pass
     # ========================
 
     return loss, data_loss, kldiv_loss
