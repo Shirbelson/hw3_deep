@@ -64,6 +64,7 @@ class Trainer(abc.ABC):
         actual_num_epochs = 0
         train_loss, train_acc, test_loss, test_acc = [], [], [], []
 
+        
         best_acc = None
         epochs_without_improvement = 0
 
@@ -94,6 +95,7 @@ class Trainer(abc.ABC):
             #  - Implement early stopping. This is a very useful and
             #    simple regularization technique that is highly recommended.
             # ====== YOUR CODE: ======
+            
             actual_num_epochs += 1
             #train epoch
             train_result = self.train_epoch(dl_train, verbose=verbose, **kw)
@@ -321,11 +323,13 @@ class RNNTrainer(Trainer):
 
 
 class VAETrainer(Trainer):
+    
     def train_batch(self, batch) -> BatchResult:
         x, _ = batch
         x = x.to(self.device)  # Image batch (N,C,H,W)
         # TODO: Train a VAE on one batch.
         # ====== YOUR CODE: ======
+        
         self.optimizer.zero_grad()
         
         xr, mu, log_sigma2 = self.model(x)
@@ -348,8 +352,8 @@ class VAETrainer(Trainer):
             # TODO: Evaluate a VAE on one batch.
             # ====== YOUR CODE: ======
             xr, mu, log_sigma2 = self.model(x)
-    
-            loss, data_loss, kld_loss = self.loss_fn(x, xr, mu, log_sigma2)
+
+            loss, data_loss, kld_loss = self.loss_fn(x, xr, mu, log_sigma2)  
             #pass
             # ========================
 
@@ -395,7 +399,16 @@ class TransformerEncoderTrainer(Trainer):
             # TODO:
             #  fill out the testing loop.
             # ====== YOUR CODE: ======
-            pass
+            self.optimizer.zero_grad()
+
+            # loss
+            pred = self.model(input_ids, attention_mask).to(self.device)
+            loss = self.loss_fn(pred.squeeze(-1), label)
+
+            # compute number of correct predictions
+            y_t = torch.round(torch.sigmoid(pred)).float()
+            num_correct = (y_t.squeeze(-1) == label).sum()
+            #pass
             # ========================
 
 

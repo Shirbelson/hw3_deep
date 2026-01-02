@@ -211,7 +211,7 @@ class VAE(nn.Module):
         return self.decode(z), mu, log_sigma2
 
 
-def vae_loss(x, xr, z_mu, z_log_sigma2, x_sigma2):
+def vae_loss(x, xr, z_mu, z_log_sigma2, x_sigma2, beta=1.0):
     """
     Point-wise loss function of a VAE with latent space of dimension z_dim.
     :param x: Input image batch of shape (N,C,H,W).
@@ -244,7 +244,7 @@ def vae_loss(x, xr, z_mu, z_log_sigma2, x_sigma2):
     kldiv_loss = torch.mean(kld_per_sample)
 
     # --- 3. Total Loss ---
-    loss = data_loss + kldiv_loss
+    loss = data_loss + kldiv_loss 
     #pass
     # ========================
 

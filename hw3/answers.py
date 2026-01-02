@@ -11,25 +11,65 @@ math (delimited with $$).
 
 def part1_rnn_hyperparams():
     hypers = dict(
-        batch_size=128,
-        seq_len=128,
+        batch_size=256,
+        seq_len=256,
         h_dim=512,
         n_layers=3,
-        dropout=0.2,
-        learn_rate=0.0003,
-        lr_sched_factor=0.7,
-        lr_sched_patience=1,
+        dropout=0.5,
+        learn_rate=0.0002,
+        lr_sched_factor=0.6,
+        lr_sched_patience=2,
     )
     # TODO: Set the hyperparameters to train the model.
     # ====== YOUR CODE: ======
+    """
+     hypers = dict(
+        batch_size=128,
+        seq_len=256,
+        h_dim=512,
+        n_layers=3,
+        dropout=0.5,
+        learn_rate=0.0005,
+        lr_sched_factor=0.6,
+        lr_sched_patience=3,
+    ) good model. 
+
+    hypers = dict(
+        batch_size=256,
+        seq_len=128,
+        h_dim=512,
+        n_layers=3,
+        dropout=0.5,
+        learn_rate=0.0005,
+        lr_sched_factor=0.6,
+        lr_sched_patience=2,
+    ) 2 model 59.4
+    """
     pass
     # ========================
     return hypers
 
 
 def part1_generation_params():
-    start_seq = ""
-    temperature = 0.0001
+    start_seq = """SHIR AND THE VERBOSE
+by William Shakespeare AI
+    
+Dramatis Personae
+SHIR BELSON
+LINOY GEVA
+ROI MAMAN
+
+SCENE:
+ZOOM; ISRAEL; Florence; Marseilles
+
+ACT I. SCENE 1.
+MADMAH. The HAVA
+
+Enter SHIR, LINOY, HELENA, and ROI, all in black
+
+SHIR. What is Verbose???
+"""
+    temperature = 0.7
     # TODO: Tweak the parameters to generate a literary masterpiece.
     # ====== YOUR CODE: ======
     pass
@@ -82,7 +122,25 @@ def part2_vae_hyperparams():
     )
     # TODO: Tweak the hyperparameters to generate a former president.
     # ====== YOUR CODE: ======
-    pass
+    hypers = dict(
+        batch_size=10,
+        h_dim=1024,
+        z_dim=128,
+        x_sigma2=0.005,
+        learn_rate=0.0002,
+        betas=(0.5, 0.999)   
+    )
+    """
+    hypers = dict(
+        batch_size=20,
+        h_dim=1024,
+        z_dim=128,
+        x_sigma2=0.005,
+        learn_rate=0.0002,
+        betas=(0.5, 0.999)   
+    ) jenifer lawrence
+    """
+    #pass
     # ========================
     return hypers
 
@@ -117,7 +175,16 @@ def part3_transformer_encoder_hyperparams():
 
     # TODO: Tweak the hyperparameters to train the transformer encoder.
     # ====== YOUR CODE: ======
-    pass
+    hypers = dict(
+        embed_dim = 256, 
+        num_heads = 4,
+        num_layers = 3,
+        hidden_dim = 256,
+        window_size = 32,
+        droupout = 0.1,
+        lr=0.0001,
+    )
+    #pass
     # ========================
     return hypers
 

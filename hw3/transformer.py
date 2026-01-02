@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import math
 
-
 # Yuval
 
 
@@ -24,13 +23,60 @@ def sliding_window_attention(q, k, v, window_size, padding_mask=None):
     batch_size = q.shape[0]
 
     values, attention = None, None
-
     # ====== YOUR CODE: ======
-    pass
+    dim = len(q.shape)
+    if dim == 3:
+        q = q.unsqueeze(1)
+        k = k.unsqueeze(1)
+        v = v.unsqueeze(1)
+    
+    batch_size, num_heads, seq_len, embed_dim = q.shape
+    #dk = embed_dim  # since after unsqueeze, embed_dim per head
+    dk = q.shape[-1]  # head_dim
+
+    h_window_size = window_size // 2
+    
+    #creating the mask sliding window in the question
+    mask = torch.full((seq_len, seq_len), float('-inf'), device=q.device)
+    for i in range(seq_len):
+        left = max(0, i - h_window_size)
+        right = min(seq_len, i + h_window_size + 1)
+        mask[i, left:right] = 0
+
+    mask = mask.unsqueeze(0).unsqueeze(0)
+    
+    B_mat = (q @ k.transpose(-2, -1)) / torch.sqrt(torch.tensor(dk, dtype=torch.float, device=q.device))
+    B_mat = B_mat + mask
+    
+    if padding_mask is not None:
+        
+        # Key padding (Columns): [Batch, 1, 1, Seq]
+        mask_key = (padding_mask == 0).unsqueeze(1).unsqueeze(2)
+        
+        # Query padding (Rows): [Batch, 1, Seq, 1]
+        mask_query = (padding_mask == 0).unsqueeze(1).unsqueeze(3)
+        
+        # ברודקאסטינג ייצור מטריצה [Batch, 1, Seq, Seq]
+        combined_mask = mask_key | mask_query 
+        
+        B_mat = B_mat.masked_fill(combined_mask, float('-inf'))
+        
+    attention = torch.softmax(B_mat, dim=-1)
+    attention = torch.nan_to_num(attention, 0.0)
+    # --------------------------
+
+    values = attention @ v
+    
+    if dim == 3:
+        values = values.squeeze(1)
+        attention = attention.squeeze(1)
     # ======================
 
     return values, attention
+    # ======================
 
+    return values, attention
+    
 class MultiHeadAttention(nn.Module):
     
     def __init__(self, input_dim, embed_dim, num_heads, window_size):
@@ -69,7 +115,9 @@ class MultiHeadAttention(nn.Module):
         # Determine value outputs
         # call the sliding window attention function you implemented
         # ====== YOUR CODE: ======
-        pass
+        values, attention = sliding_window_attention(
+            q, k, v, self.window_size, padding_mask=padding_mask
+        )
         # ========================
 
         values = values.permute(0, 2, 1, 3) # [Batch, SeqLen, Head, Dims]
@@ -146,7 +194,11 @@ class EncoderLayer(nn.Module):
         '''
 
         # ====== YOUR CODE: ======
-        pass
+        attn_output = self.self_attn(x, padding_mask)
+        x = self.norm1(x + self.dropout(attn_output))      
+        ff_output = self.feed_forward(x)
+        x = self.norm2(x + self.dropout(ff_output))
+        #pass
         # ========================
         
         return x
@@ -188,7 +240,18 @@ class Encoder(nn.Module):
         output = None
 
         # ====== YOUR CODE: ======
-        pass
+        
+        embedded = self.encoder_embedding(sentence)  
+        x = self.positional_encoding(embedded)    
+        x = self.dropout(x)
+
+        for layer in self.encoder_layers:
+            x = layer(x, padding_mask)           
+
+        logits = self.classification_mlp(x)[:,0,0]
+        output = logits.unsqueeze(-1)        
+        
+        #pass
         # ========================
         
         
